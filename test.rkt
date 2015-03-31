@@ -19,7 +19,7 @@
     (define end-pos-bytes (file-position file))
     (define buffer-size-char (expt 2 10))
     (define move-margin-char (/ buffer-size-char 8))
-    (define refill-size-bytes (* move-margin-char 2))
+    (define refill-size-bytes (/ buffer-size-char 8))
     (define trim-margin-char (/ buffer-size-char 8))
     (define first-update #t)
     (define update-timer #f)
