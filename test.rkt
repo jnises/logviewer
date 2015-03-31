@@ -18,8 +18,8 @@
     (define start-pos-bytes (file-position file))
     (define end-pos-bytes (file-position file))
     (define buffer-size-char (expt 2 10))
-    (define move-margin-char (/ buffer-size-char 4))
-    (define refill-size-bytes (* 2 move-margin-char))
+    (define move-margin-char (/ buffer-size-char 8))
+    (define refill-size-bytes (* move-margin-char 2))
     (define trim-margin-char (/ buffer-size-char 8))
     (define first-update #t)
     (define update-timer #f)
@@ -31,14 +31,14 @@
     (define (trim-buffer-start)
       (match-let ([(list visible-start _) (get-visible-range)])
         (let ([trim-end (max 0 (- visible-start trim-margin-char))])
-          (set! trim-end (bytes-length (string->bytes/utf-8 (get-text 0 trim-end))))
+          (set! start-pos-bytes (+ start-pos-bytes (bytes-length (string->bytes/utf-8 (get-text 0 trim-end)))))
           (delete 0 trim-end #f))))
     (define (trim-buffer-end)
       (match-let ([(list _ visible-end) (get-visible-range)])
         (let ([trim-start (- (get-end-position) (max 0 (- (get-end-position) visible-end trim-margin-char)))])
           ;; TODO keep track of the bytes in some other way?
           ;; non-utf-8 chars are converted to ? and should thus be counted correctly
-          (set! end-pos-bytes (bytes-length (string->bytes/utf-8 (get-text trim-start (get-end-position)))))
+          (set! end-pos-bytes (- end-pos-bytes (bytes-length (string->bytes/utf-8 (get-text trim-start (get-end-position))))))
           (delete trim-start (get-end-position) #f))))
     (define (update)
       (begin-edit-sequence #f #f)
@@ -74,9 +74,9 @@
                          [(eof-object? (peek-byte _file)) data]
                          [(< (peek-byte _file) 128) data]
                          [else (loop (- limit 1) (bytes-append data (make-bytes (read-byte _file))))]))])
-            (set! end-pos-bytes (file-position _file))
             (when (not (eof-object? data))
-              (insert (bytes->string/utf-8 data #\?) 0 'same #f)))))
+              (set! end-pos-bytes (file-position _file))
+              (insert (bytes->string/utf-8 data #\?) (get-end-position) 'same #f)))))
       (end-edit-sequence)
       (when first-update
         (scroll-to-position (get-end-position))
