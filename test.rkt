@@ -1,6 +1,5 @@
 #lang racket/gui
 
-;; TODO handle the fact that editor positions are in characters, and the file position is in bytes
 (define logtext%
   (class text%
     (init file)
@@ -13,6 +12,7 @@
     (inherit scroll-to-position)
     (inherit get-end-position)
     (inherit delete)
+    (inherit get-text)
     (send this set-max-undo-history 0)
     (file-position _file eof)
     (define start-pos-bytes (file-position file))
@@ -31,15 +31,19 @@
     (define (trim-buffer-start)
       (match-let ([(list visible-start _) (get-visible-range)])
         (let ([trim-end (max 0 (- visible-start trim-margin-char))])
+          (set! trim-end (bytes-length (string->bytes/utf-8 (get-text 0 trim-end))))
           (delete 0 trim-end #f))))
     (define (trim-buffer-end)
       (match-let ([(list _ visible-end) (get-visible-range)])
         (let ([trim-start (- (get-end-position) (max 0 (- (get-end-position) visible-end trim-margin-char)))])
+          ;; TODO keep track of the bytes in some other way?
+          ;; non-utf-8 chars are converted to ? and should thus be counted correctly
+          (set! end-pos-bytes (bytes-length (string->bytes/utf-8 (get-text trim-start (get-end-position)))))
           (delete trim-start (get-end-position) #f))))
     (define (update)
       (begin-edit-sequence #f #f)
       (match-let ([(list start-char end-char) (get-visible-range)])
-        (when (< start-char move-margin-char)
+        (when (and (< start-char move-margin-char) (> start-pos-bytes 0))
           ;; too close to the top, try to prepend more data
           (trim-buffer-end)
           (let* ([prependstart (- start-pos-bytes refill-size-bytes)])
