@@ -15,8 +15,9 @@
     (inherit delete)
     (inherit get-text)
     (file-position file eof)
-    (define start-pos-bytes (file-position file))
-    (define end-pos-bytes (file-position file))
+    (define file-size (file-position file))
+    (define start-pos-bytes file-size)
+    (define end-pos-bytes file-size)
     (define buffer-size-char (expt 2 16))
     (define move-margin-char (/ buffer-size-char 32))
     (define refill-size-bytes (/ buffer-size-char 128))
@@ -46,8 +47,11 @@
           (delete trim-start (last-position) #f))))
     (define (update)
       (begin-edit-sequence #f #f)
-      (match-let ([(list start-char end-char) (get-visible-range)])
-        (when (and (< start-char move-margin-char))
+      (match-let ([(list start-char end-char) (get-visible-range)]
+                  [new-file-size (begin
+                                   (file-position file eof)
+                                   (file-position file))])
+        (when (< start-char move-margin-char) 
           ;; too close to the top, try to prepend more data
           (trim-buffer-end)
           (let ([prepended 
@@ -75,7 +79,7 @@
                              (fillloop total-prepended)
                              total-prepended)))))])
             (scroll-to-position (+ start-char prepended))))
-        (when (> end-char (- (last-position) move-margin-char))
+        (when (or (> end-char (- (last-position) move-margin-char)) (> new-file-size file-size))
           ;; too close to the bottom, try to append more data
           (trim-buffer-start)
           (let fillloop ()
@@ -92,7 +96,8 @@
                 (set! end-pos-bytes (file-position file))
                 (insert (bytes->string/utf-8 data #\?) (last-position) 'same #f)
                 (when (and (< (bytes-length data) 0) (< (last-position) buffer-size-char))
-                  (fillloop)))))))
+                  (fillloop))))))
+        (set! file-size new-file-size))
       (end-edit-sequence)
       (when first-update
         (scroll-to-position (last-position))
