@@ -115,12 +115,27 @@
                    [height 400]))
  
 (define c (new editor-canvas% [parent frame]))
-(define t (new logtext% [file (open-input-file "/tmp/testfile")]))
-(send c set-editor t)
 
-(define mb (new menu-bar% [parent frame]))
-;; (define m-edit (new menu% [label "Edit"] [parent mb]))
-;; (append-editor-operation-menu-items m-edit #f)
+(define (open-log . ignored)
+  (let ([file (get-file)])
+    (when file
+      (send c set-editor (new logtext% [file (open-input-file file)])))))
+;;(define t (new logtext% [file (open-input-file "/tmp/testfile")]))
+;;(send c set-editor t)
+
+(define menu-bar (new menu-bar% [parent frame]))
+(define file-menu (new menu%
+                       [label "File"]
+                       [parent menu-bar]))
+(define open-file-menu (new menu-item% 
+                            [label "Open Log"]
+                            [parent file-menu]
+                            [shortcut #\o]
+                            [callback open-log]))
+;; (define edit-menu (new menu%
+;;                        [label "Edit"]
+;;                        [parent menu-bar]))
+;; (append-editor-operation-menu-items edit-menu #f)
 
 (send frame show #t)
 
