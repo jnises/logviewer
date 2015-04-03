@@ -53,7 +53,7 @@
         (when (< start-char move-margin-char) 
           ;; too close to the top, try to prepend more data
           (trim-buffer-end)
-          (let ([prepended 
+          (let ([prepended
                  (let fillloop ([prepended 0])
                    (let ([prependstart (- start-pos-bytes refill-size-bytes)])
                      (file-position file (max 0 prependstart))
