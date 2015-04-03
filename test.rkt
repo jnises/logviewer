@@ -50,7 +50,7 @@
         (when (and (< start-char move-margin-char))
           ;; too close to the top, try to prepend more data
           (trim-buffer-end)
-          (let fillloop ()
+          (let fillloop ([prepended 0])
             (let ([prependstart (- start-pos-bytes refill-size-bytes)])
               (file-position file (max 0 prependstart))
               ;; step forward until next utf8 start
@@ -67,11 +67,12 @@
                      [data (read-bytes readsize file)]
                      [text (bytes->string/utf-8 data #\?)])
                 (insert text 0 'same #f)
-                (scroll-to-position (+ start-char (string-length text)))
-                (set! start-pos-bytes newstart)
-                ;; loop until the buffer is big enough
-                (when (and (> (bytes-length data) 0) (< (last-position) buffer-size-char))
-                  (fillloop))))))
+                (let ([total-prepended (+ (string-length text) prepended)])
+                  (scroll-to-position (+ start-char total-prepended))
+                  (set! start-pos-bytes newstart)
+                  ;; loop until the buffer is big enough
+                  (when (and (> (bytes-length data) 0) (< (last-position) buffer-size-char))
+                    (fillloop total-prepended)))))))
         (when (> end-char (- (last-position) move-margin-char))
           ;; too close to the bottom, try to append more data
           (trim-buffer-start)
