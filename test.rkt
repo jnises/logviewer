@@ -38,7 +38,8 @@
           (scroll-to-position new-start))))
     (define (trim-buffer-end)
       (match-let ([(list _ visible-end) (get-visible-range)])
-        (let ([trim-start (- (last-position) (max 0 (- (last-position) visible-end trim-margin-char)))])
+        (let ([trim-start (min (last-position) (+ visible-end trim-margin-char))])
+          ;; don't need to skip any utf-8 stuff here since we are operating on chars in the editor
           ;; TODO keep track of the bytes in some other way?
           ;; non-utf-8 chars are converted to ? and should thus be counted correctly
           (set! end-pos-bytes (- end-pos-bytes (bytes-length (string->bytes/utf-8 (get-text trim-start (last-position))))))
