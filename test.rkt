@@ -2,9 +2,8 @@
 
 (define logtext%
   (class text%
-    (init file)
+    (init-field file)
     (super-new [auto-wrap #t])
-    (define _file file)
     (inherit get-visible-position-range)
     (inherit insert)
     (inherit begin-edit-sequence)
@@ -14,12 +13,12 @@
     (inherit delete)
     (inherit get-text)
     (send this set-max-undo-history 0)
-    (file-position _file eof)
+    (file-position file eof)
     (define start-pos-bytes (file-position file))
     (define end-pos-bytes (file-position file))
     (define buffer-size-char (expt 2 16))
     (define move-margin-char (/ buffer-size-char 32))
-    (define refill-size-bytes (/ buffer-size-char 16))
+    (define refill-size-bytes (/ buffer-size-char 128))
     (define trim-margin-char (/ buffer-size-char 16))
     (define first-update #t)
     (define update-timer #f)
@@ -50,39 +49,46 @@
         (when (and (< start-char move-margin-char))
           ;; too close to the top, try to prepend more data
           (trim-buffer-end)
-          (let* ([prependstart (- start-pos-bytes refill-size-bytes)])
-            (file-position _file (max 0 prependstart))
-            ;; step forward until next utf8 start
-            ;; step at most 6 bytes
-            (let loop ([limit 6])
-              (cond
-               [(< limit 1) #f]
-               [(eof-object? (peek-byte _file)) #f]
-               [(< (peek-byte _file) 128) #f]
-               [else (read-byte _file)
-                     (loop (- limit 1))]))
-            (let* ([newstart (file-position _file)]
-                   [readsize (- start-pos-bytes newstart)]
-                   [data (read-bytes readsize _file)]
-                   [text (bytes->string/utf-8 data #\?)])
-              (insert text 0 'same #f)
-              (scroll-to-position (+ start-char (string-length text)))
-              (set! start-pos-bytes newstart))))
+          (let fillloop ()
+            (let ([prependstart (- start-pos-bytes refill-size-bytes)])
+              (file-position file (max 0 prependstart))
+              ;; step forward until next utf8 start
+              ;; step at most 6 bytes
+              (let loop ([limit 6])
+                (cond
+                 [(< limit 1) #f]
+                 [(eof-object? (peek-byte file)) #f]
+                 [(< (peek-byte file) 128) #f]
+                 [else (read-byte file)
+                       (loop (- limit 1))]))
+              (let* ([newstart (file-position file)]
+                     [readsize (- start-pos-bytes newstart)]
+                     [data (read-bytes readsize file)]
+                     [text (bytes->string/utf-8 data #\?)])
+                (insert text 0 'same #f)
+                (scroll-to-position (+ start-char (string-length text)))
+                (set! start-pos-bytes newstart)
+                ;; loop until the buffer is big enough
+                (when (and (> (bytes-length data) 0) (< (last-position) buffer-size-char))
+                  (fillloop))))))
         (when (> end-char (- (last-position) move-margin-char))
           ;; too close to the bottom, try to append more data
           (trim-buffer-start)
-          (file-position _file end-pos-bytes)
-          ;; make sure we end at a utf-8 boundary
-          (let ([data (let loop ([limit 6]
-                                 [data (read-bytes refill-size-bytes _file)])
-                        (cond
-                         [(< limit 1) data]
-                         [(eof-object? (peek-byte _file)) data]
-                         [(< (peek-byte _file) 128) data]
-                         [else (loop (- limit 1) (bytes-append data (make-bytes (read-byte _file))))]))])
-            (when (not (eof-object? data))
-              (set! end-pos-bytes (file-position _file))
-              (insert (bytes->string/utf-8 data #\?) (last-position) 'same #f)))))
+          (let fillloop ()
+            (file-position file end-pos-bytes)
+            ;; make sure we end at a utf-8 boundary
+            (let ([data (let loop ([limit 6]
+                                   [data (read-bytes refill-size-bytes file)])
+                          (cond
+                           [(< limit 1) data]
+                           [(eof-object? (peek-byte file)) data]
+                           [(< (peek-byte file) 128) data]
+                           [else (loop (- limit 1) (bytes-append data (make-bytes (read-byte file))))]))])
+              (when (not (eof-object? data))
+                (set! end-pos-bytes (file-position file))
+                (insert (bytes->string/utf-8 data #\?) (last-position) 'same #f)
+                (when (and (< (bytes-length data) 0) (< (last-position) buffer-size-char))
+                  (fillloop)))))))
       (end-edit-sequence)
       (when first-update
         (scroll-to-position (last-position))
