@@ -30,9 +30,12 @@
         (list (unbox start) (unbox end))))
     (define (trim-buffer-start)
       (match-let ([(list visible-start _) (get-visible-range)])
-        (let ([trim-end (max 0 (- visible-start trim-margin-char))])
-          (set! start-pos-bytes (+ start-pos-bytes (bytes-length (string->bytes/utf-8 (get-text 0 trim-end)))))
-          (delete 0 trim-end #f))))
+        (let* ([trim-end (max 0 (- visible-start trim-margin-char))]
+               [text (get-text 0 trim-end)]
+               [new-start (- visible-start (string-length text))])
+          (set! start-pos-bytes (+ start-pos-bytes (bytes-length (string->bytes/utf-8 text))))
+          (delete 0 trim-end #f)
+          (scroll-to-position new-start))))
     (define (trim-buffer-end)
       (match-let ([(list _ visible-end) (get-visible-range)])
         (let ([trim-start (- (get-end-position) (max 0 (- (get-end-position) visible-end trim-margin-char)))])
@@ -59,8 +62,10 @@
                      (loop (- limit 1))]))
             (let* ([newstart (file-position _file)]
                    [readsize (- start-pos-bytes newstart)]
-                   [data (read-bytes readsize _file)])
-              (insert (bytes->string/utf-8 data #\?) 0 'same #f)
+                   [data (read-bytes readsize _file)]
+                   [text (bytes->string/utf-8 data #\?)])
+              (insert text 0 'same #f)
+              (scroll-to-position (+ start-char (string-length text)))
               (set! start-pos-bytes newstart))))
         (when (> end-char (- (get-end-position) move-margin-char))
           ;; too close to the bottom, try to append more data
