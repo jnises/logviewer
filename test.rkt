@@ -4,6 +4,8 @@
   (class text%
     (init-field file)
     (super-new [auto-wrap #t])
+    (send this hide-caret #t)
+    (send this set-max-undo-history 0)
     (inherit get-visible-position-range)
     (inherit insert)
     (inherit begin-edit-sequence)
@@ -12,7 +14,6 @@
     (inherit last-position)
     (inherit delete)
     (inherit get-text)
-    (send this set-max-undo-history 0)
     (file-position file eof)
     (define start-pos-bytes (file-position file))
     (define end-pos-bytes (file-position file))
@@ -93,12 +94,15 @@
       (when first-update
         (scroll-to-position (last-position))
         (set! first-update #f)))
+    ;; read only
+    (define/override (on-char event)
+      #f)
     ;; TODO do updates in some smarter way than this
     (set! update-timer (new timer% [notify-callback update]
                             [interval 100]))))
 
 (define frame (new frame% 
-                   [label "Example"]
+                   [label "Log viewer"]
                    [width 400]
                    [height 400]))
  
