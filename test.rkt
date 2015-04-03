@@ -110,9 +110,9 @@
 (define t (new logtext% [file (open-input-file "/tmp/testfile")]))
 (send c set-editor t)
 
-(define mb (new menu-bar% [parent frame]))
-(define m-edit (new menu% [label "Edit"] [parent mb]))
-(append-editor-operation-menu-items m-edit #f)
+;; (define mb (new menu-bar% [parent frame]))
+;; (define m-edit (new menu% [label "Edit"] [parent mb]))
+;; (append-editor-operation-menu-items m-edit #f)
 
 (send frame show #t)
 
