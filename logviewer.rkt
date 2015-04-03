@@ -4,7 +4,6 @@
   (class text%
     (init-field file follow)
     (super-new [auto-wrap #t])
-    (send this hide-caret #t)
     (send this set-max-undo-history 0)
     (inherit get-visible-position-range)
     (inherit insert)
@@ -138,15 +137,25 @@
 (define file-menu (new menu%
                        [label "File"]
                        [parent menu-bar]))
-(define open-file-menu (new menu-item% 
-                            [label "Open Log"]
-                            [parent file-menu]
-                            [shortcut #\o]
-                            [callback open-log]))
-;; (define edit-menu (new menu%
-;;                        [label "Edit"]
-;;                        [parent menu-bar]))
-;; (append-editor-operation-menu-items edit-menu #f)
+(new menu-item% 
+     [label "Open"]
+     [parent file-menu]
+     [shortcut #\o]
+     [callback open-log])
+(new menu-item%
+     [label "Quit"]
+     [parent file-menu]
+     [callback (λ (a b) (exit))])
+
+(define edit-menu (new menu%
+                       [label "Edit"]
+                       [parent menu-bar]))
+(new menu-item%
+     [label "Copy"]
+     [parent edit-menu]
+     [shortcut #\c]
+     [callback (λ (a b) (send logger do-edit-operation 'copy))])
+;;(append-editor-operation-menu-items edit-menu #f)
 
 (send frame show #t)
 
