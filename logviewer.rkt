@@ -2,7 +2,7 @@
 
 (define logtext%
   (class text%
-    (init-field file)
+    (init-field file follow)
     (super-new [auto-wrap #t])
     (send this hide-caret #t)
     (send this set-max-undo-history 0)
@@ -22,7 +22,6 @@
     (define move-margin-char (/ buffer-size-char 32))
     (define refill-size-bytes (/ buffer-size-char 128))
     (define trim-margin-char (/ buffer-size-char 16))
-    (define first-update #t)
     (define update-timer #f)
     (define (get-visible-range)
       (let ([start (box 0)]
@@ -99,12 +98,14 @@
                   (fillloop))))))
         (set! file-size new-file-size))
       (end-edit-sequence)
-      (when first-update
-        (scroll-to-position (last-position))
-        (set! first-update #f)))
+      ;; TODO only do this when the file has grown?
+      (when follow
+        (scroll-to-position (last-position))))
     ;; read only
     (define/override (on-char event)
       #f)
+    (define/public (tail value)
+      (set! follow value))
     ;; TODO do updates in some smarter way than this
     (set! update-timer (new timer% [notify-callback update]
                             [interval 300]))))
@@ -113,15 +114,25 @@
                    [label "Log viewer"]
                    [width 400]
                    [height 400]))
- 
-(define c (new editor-canvas% [parent frame]))
-
-(define (open-log . ignored)
+(define panel (new vertical-panel%
+                   [parent frame]
+                   [alignment '(left center)]))
+(define logger #f)
+(define follow (new check-box%
+                    [parent panel]
+                    [label "Tail"]
+                    [value #t]
+                    [callback (λ (checkbox event)
+                                (when logger
+                                  (send logger tail (send checkbox get-value))))]))
+(define c (new editor-canvas% [parent panel]))
+(define (open-log . _)
   (let ([file (get-file)])
     (when file
-      (send c set-editor (new logtext% [file (open-input-file file)])))))
-;;(define t (new logtext% [file (open-input-file "/tmp/testfile")]))
-;;(send c set-editor t)
+      (set! logger (new logtext%
+                        [file (open-input-file file)]
+                        [follow (send follow get-value)]))
+      (send c set-editor logger))))
 
 (define menu-bar (new menu-bar% [parent frame]))
 (define file-menu (new menu%
