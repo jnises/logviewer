@@ -107,7 +107,7 @@
       #f)
     ;; TODO do updates in some smarter way than this
     (set! update-timer (new timer% [notify-callback update]
-                            [interval 100]))))
+                            [interval 300]))))
 
 (define frame (new frame% 
                    [label "Log viewer"]
