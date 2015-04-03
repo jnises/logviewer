@@ -71,9 +71,9 @@
                        (set! start-pos-bytes newstart)
                        (let ([total-prepended (+ (string-length text) prepended)])
                          ;; loop until the buffer is big enough
-                         (when (and (> (bytes-length data) 0) (< (last-position) buffer-size-char))
-                           (fillloop total-prepended))
-                         total-prepended))))])
+                         (if (and (> (bytes-length data) 0) (< (last-position) buffer-size-char))
+                             (fillloop total-prepended)
+                             total-prepended)))))])
             (scroll-to-position (+ start-char prepended))))
         (when (> end-char (- (last-position) move-margin-char))
           ;; too close to the bottom, try to append more data
