@@ -155,7 +155,6 @@
      [parent edit-menu]
      [shortcut #\c]
      [callback (λ (a b) (send logger do-edit-operation 'copy))])
-;;(append-editor-operation-menu-items edit-menu #f)
 
 (send frame show #t)
 
