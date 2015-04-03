@@ -45,7 +45,7 @@
           (set! end-pos-bytes (- end-pos-bytes (bytes-length (string->bytes/utf-8 (get-text trim-start (last-position))))))
           (delete trim-start (last-position) #f))))
     (define (update)
-      (begin-edit-sequence #f #f)
+      (begin-edit-sequence #t #t)
       (match-let ([(list start-char end-char) (get-visible-range)]
                   [new-file-size (begin
                                    (file-position file eof)
