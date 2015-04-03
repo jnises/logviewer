@@ -50,6 +50,24 @@
                   [new-file-size (begin
                                    (file-position file eof)
                                    (file-position file))])
+        (when (or (> end-char (- (last-position) move-margin-char)) (> new-file-size file-size))
+          ;; too close to the bottom, try to append more data
+          (trim-buffer-start)
+          (let fillloop ()
+            (file-position file end-pos-bytes)
+            ;; make sure we end at a utf-8 boundary
+            (let ([data (let loop ([limit 6]
+                                   [data (read-bytes refill-size-bytes file)])
+                          (cond
+                           [(< limit 1) data]
+                           [(eof-object? (peek-byte file)) data]
+                           [(< (peek-byte file) 128) data]
+                           [else (loop (- limit 1) (bytes-append data (make-bytes (read-byte file))))]))])
+              (when (not (eof-object? data))
+                (set! end-pos-bytes (file-position file))
+                (insert (bytes->string/utf-8 data #\?) (last-position) 'same #f)
+                (when (and (< (bytes-length data) 0) (< (last-position) buffer-size-char))
+                  (fillloop))))))
         (when (< start-char move-margin-char) 
           ;; too close to the top, try to prepend more data
           (trim-buffer-end)
@@ -78,24 +96,6 @@
                              (fillloop total-prepended)
                              total-prepended)))))])
             (scroll-to-position (+ start-char prepended))))
-        (when (or (> end-char (- (last-position) move-margin-char)) (> new-file-size file-size))
-          ;; too close to the bottom, try to append more data
-          (trim-buffer-start)
-          (let fillloop ()
-            (file-position file end-pos-bytes)
-            ;; make sure we end at a utf-8 boundary
-            (let ([data (let loop ([limit 6]
-                                   [data (read-bytes refill-size-bytes file)])
-                          (cond
-                           [(< limit 1) data]
-                           [(eof-object? (peek-byte file)) data]
-                           [(< (peek-byte file) 128) data]
-                           [else (loop (- limit 1) (bytes-append data (make-bytes (read-byte file))))]))])
-              (when (not (eof-object? data))
-                (set! end-pos-bytes (file-position file))
-                (insert (bytes->string/utf-8 data #\?) (last-position) 'same #f)
-                (when (and (< (bytes-length data) 0) (< (last-position) buffer-size-char))
-                  (fillloop))))))
         (set! file-size new-file-size))
       (end-edit-sequence)
       ;; TODO only do this when the file has grown?
