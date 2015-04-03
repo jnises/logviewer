@@ -50,29 +50,31 @@
         (when (and (< start-char move-margin-char))
           ;; too close to the top, try to prepend more data
           (trim-buffer-end)
-          (let fillloop ([prepended 0])
-            (let ([prependstart (- start-pos-bytes refill-size-bytes)])
-              (file-position file (max 0 prependstart))
-              ;; step forward until next utf8 start
-              ;; step at most 6 bytes
-              (let loop ([limit 6])
-                (cond
-                 [(< limit 1) #f]
-                 [(eof-object? (peek-byte file)) #f]
-                 [(< (peek-byte file) 128) #f]
-                 [else (read-byte file)
-                       (loop (- limit 1))]))
-              (let* ([newstart (file-position file)]
-                     [readsize (- start-pos-bytes newstart)]
-                     [data (read-bytes readsize file)]
-                     [text (bytes->string/utf-8 data #\?)])
-                (insert text 0 'same #f)
-                (let ([total-prepended (+ (string-length text) prepended)])
-                  (scroll-to-position (+ start-char total-prepended))
-                  (set! start-pos-bytes newstart)
-                  ;; loop until the buffer is big enough
-                  (when (and (> (bytes-length data) 0) (< (last-position) buffer-size-char))
-                    (fillloop total-prepended)))))))
+          (let ([prepended 
+                 (let fillloop ([prepended 0])
+                   (let ([prependstart (- start-pos-bytes refill-size-bytes)])
+                     (file-position file (max 0 prependstart))
+                     ;; step forward until next utf8 start
+                     ;; step at most 6 bytes
+                     (let loop ([limit 6])
+                       (cond
+                        [(< limit 1) #f]
+                        [(eof-object? (peek-byte file)) #f]
+                        [(< (peek-byte file) 128) #f]
+                        [else (read-byte file)
+                              (loop (- limit 1))]))
+                     (let* ([newstart (file-position file)]
+                            [readsize (- start-pos-bytes newstart)]
+                            [data (read-bytes readsize file)]
+                            [text (bytes->string/utf-8 data #\?)])
+                       (insert text 0 'same #f)
+                       (set! start-pos-bytes newstart)
+                       (let ([total-prepended (+ (string-length text) prepended)])
+                         ;; loop until the buffer is big enough
+                         (when (and (> (bytes-length data) 0) (< (last-position) buffer-size-char))
+                           (fillloop total-prepended))
+                         total-prepended))))])
+            (scroll-to-position (+ start-char prepended))))
         (when (> end-char (- (last-position) move-margin-char))
           ;; too close to the bottom, try to append more data
           (trim-buffer-start)
